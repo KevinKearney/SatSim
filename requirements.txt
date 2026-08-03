@@ -5,23 +5,26 @@
 # Rebuild:  conda env create -f environment.yml   (see that file)
 #       or: pip install -r requirements.txt       (into a fresh py3.10 env)
 #
-# NOTE (known tension, deferred to band-integration work):
-#   synphot 1.7.0 declares astropy>=6, but SatSim 0.25.2 pins astropy<6, so
-#   this env holds astropy 5.3.4. `pip check` flags this. synphot is exercised
-#   in the band-integration notebook; compatibility is verified empirically
-#   there rather than by forcing an astropy upgrade that would break SatSim.
-#
-# NOTE: specutils is NOT yet pinned here; it is added when the band-integration
-#   notebook (ADR Action Item 3) is built, to keep that install auditable.
+# KNOWN TENSION (deferred, works in practice):
+#   synphot 1.7.0 declares astropy>=6, but SatSim 0.25.2 pins astropy<6, so this
+#   env holds astropy 5.3.4. `pip check` flags this, yet synphot's band
+#   integration runs correctly on 5.3.4 (verified in the band-integration
+#   notebook). specutils was likewise constrained to the 1.x line
+#   (`specutils<2 astropy<6 asdf<3` -> specutils 1.20.3) so it would not drag in
+#   astropy>=6 / asdf>=3 and break SatSim. Do not "fix" the pin by upgrading
+#   astropy without re-verifying SatSim.
 # ============================================================================
 
 absl-py==2.5.0
 annotated-types==0.8.0
 apng==0.3.4
+asdf_coordinates_schemas==0.5.1
 asdf_standard==1.5.0
 asdf_transform_schemas==0.6.0
 asdf_unit_schemas==0.2.0
+asdf_wcs_schemas==0.5.0
 asdf==2.15.2
+asdf-astropy==0.7.1
 astropy==5.3.4
 astroquery==0.4.11
 asttokens==3.0.2
@@ -55,6 +58,7 @@ fonttools==4.63.0
 gast==0.7.0
 google-pasta==0.2.0
 grpcio==1.83.0
+gwcs==0.21.0
 h2==4.4.0
 h5py==3.14.0
 hpack==4.2.0
@@ -98,6 +102,7 @@ namex==0.1.0
 nbclient==0.11.0
 nbconvert==7.17.1
 nbformat==5.10.4
+ndcube==2.3.5
 nest-asyncio2==1.7.2
 networkx==3.4.2
 numba==0.66.0
@@ -149,6 +154,7 @@ sgp4==2.26
 six==1.17.0
 skyfield==1.54
 soupsieve==2.9.1
+specutils==1.20.3
 stack-data==0.6.3
 StrEnum==0.4.15
 synphot==1.7.0
