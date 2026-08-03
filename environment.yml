@@ -1,0 +1,24 @@
+# Conda environment spec for the RSO-simulation R&D work (SatSim/synphot/DIRSIG).
+#
+# The environment is a conda-forge Python 3.10 base with the full package set
+# installed via pip (SatSim and its scientific stack are pip-distributed). Exact
+# version pins live in requirements.txt; this file owns the interpreter + the
+# pip bootstrap so the whole env rebuilds with a single command:
+#
+#     conda env create -f environment.yml
+#     conda activate satsim-env
+#     python -m ipykernel install --user --name satsim-env \
+#            --display-name "Python (satsim-env)"
+#
+# Do NOT create a second/renamed env — this project standardizes on satsim-env
+# (see CLAUDE.md). A full clean rebuild was not run this session (multi-GB
+# TensorFlow stack); the pins were validated for internal consistency with
+# `pip check` instead (only the documented synphot/astropy tension remains).
+name: satsim-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r requirements.txt
