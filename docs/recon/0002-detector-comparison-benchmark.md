@@ -119,3 +119,65 @@ be needed to hit 20× and was deliberately not done (the prompt specifies λ⁻�
 - `docs/architecture/current.md`, `docs/adr/*`, `docs/audits/0001-*`, and the three prior notebooks were
   not modified. SatSim and toy_model source were not touched.
 - Committed locally on `rnd/detector-comparison-benchmark`; nothing pushed.
+
+---
+
+## 8. Extension — SCION-SR daytime-custody demonstration (AMOS §5)
+
+Added 2026-08-06, in place in the same notebook (single source of truth for the model). Supports the AMOS
+paper §5 argument that the SCION-SR (VisGaAs) focal plane enables ground-based **daytime/twilight custody**
+of LEO objects. Investigation-record tier, same as the rest of this note. Branch: `rnd/scion-daytime-custody`.
+
+### 8.1 Passband capability added to the model
+`signal_electron_rate` and `run_detector` gained an optional longpass `lo_cut_um` (applied as a wavelength
+mask to **both** the signal and sky-background integrals) plus, on `run_detector`, an `E_tgt_override` for
+running an alternate target geometry. Both default to the prior behaviour (`None`), so the existing
+detector-comparison section is unchanged — regression-verified: **full-band SCION still SNR 23.2** at the
+current daytime `SKY_VIS_REF=20`. The demonstration cutoff is a notebook parameter; **no** config field was
+added (the SCION entry deliberately keeps no `effective_bandpass_um`).
+
+### 8.2 Daytime demonstration
+`ACTIVE_DETECTOR = "scion_visgaas"`, detection criterion `SNR_DETECT = 5`. Two targets under the fixed
+optics/atmosphere: **baseline** 1U @ 500 km (~mag 8.3, the conventional ~10 cm LEO catalog threshold) and a
+**harder** 1U @ 1500 km (~mag 10.7, a low-elevation pass), across three sky levels.
+
+- **Result:** the baseline object stays detected across the whole daytime range (SNR ≈ 55 / 23 / 11 at
+  `SKY_VIS_REF` = 2 / 20 / 100). The harder 1500 km pass is detected only at the lowest sky (SNR 7.3,
+  margin +2.3) and is **lost** by intermediate sky (SNR 2.6, margin −2.4) — the practical daytime custody
+  boundary for the fainter geometry. Continuous-sweep SNR=5 crossings: harder ~`SKY_VIS_REF` 5, baseline ~476.
+- The budget is sky-dominated at these levels; the fully shot/read-limited regime appears only at
+  still-lower sky (shown on the continuous axis of Figure 1 and consistent with the night case in §11 of the
+  notebook).
+
+### 8.3 New placeholder values introduced (all flagged loudly in-notebook)
+| quantity | value | status |
+|---|---|---|
+| Three daytime sky levels | `SKY_VIS_REF` = 2 / 20 / 100 W m⁻² sr⁻¹ µm⁻¹ | **placeholder** visible-sky levels — **NOT** a solar-elevation model; no elevation→radiance relation derived |
+| Harder target geometry | 1U @ 1500 km slant range (else identical to baseline `SCEN`) | **placeholder** low-elevation pass |
+| Detection criterion | `SNR_DETECT = 5` | assumed threshold |
+| Passband sweep range / reference | 0.4–1.4 µm swept; ≥1.1 µm cited as reference | reference cutoff from Waldmann, **not** derived here |
+
+The §5–§7 caveats of this note (blackbody solar proxy, placeholder BRDF geometry, λ⁻⁴ sky with Mie=0 /
+airglow=0, ~11× vs ~20× SWIR/visible suppression, assumed optics throughput, 1 ms / 5 px) all carry over
+unchanged.
+
+### 8.4 Finding — the passband optimum is atmosphere-limited, NOT a publishable result
+A cutoff sweep (0.4–1.4 µm, bright sky) shows a broad SNR peak near **~0.74 µm** in this model. **This is not
+a sensor-design optimum and must not be reported as one.** Its location is governed entirely by the
+placeholder atmosphere — pure λ⁻⁴ Rayleigh with Mie/aerosol = 0 and airglow = 0, achieving only ~11×
+SWIR/visible sky suppression versus the literature ~20×. A more complete atmosphere would move the peak.
+The sweep is presented as **sensitivity behaviour only**; the operational reference cutoff is Waldmann's
+**≥1.1 µm** longpass, and the real optimum is deferred to the atmosphere-complete follow-on. This is the
+same class of "atmosphere becomes load-bearing" finding as §5 of this note.
+
+### 8.5 Figures
+Four publication-grade figures written to `data/outputs/figures/` (PDF + 300-dpi PNG, AMOS column widths,
+manifest alongside): detection-SNR-vs-sky (primary), per-wavelength budget, noise-budget composition, and
+the passband sweep (annotated with the atmosphere caveat and the ≥1.1 µm reference). No local AMOS template
+was found in the repo, so conference-standard widths (single 3.4 in, double 7.0 in) were used.
+
+### 8.6 Boundaries honored (this extension)
+No continuous solar-elevation model and no MODTRAN/Mie/aerosol/airglow (deferred follow-on). Passband
+optimum presented as behaviour, not a result. No invented values. Existing comparison outputs unchanged
+(regression-gated). `docs/architecture/current.md`, `docs/adr/*`, `docs/audits/*`, and the other three
+notebooks untouched; no `src/` extraction. Committed locally on `rnd/scion-daytime-custody`; nothing pushed.
