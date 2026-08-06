@@ -1,4 +1,8 @@
-data/
+# data/ is ignored, EXCEPT the publication figure deliverables under data/outputs/figures/
+data/*
+!data/outputs/
+data/outputs/*
+!data/outputs/figures/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
