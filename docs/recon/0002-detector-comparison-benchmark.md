@@ -181,3 +181,70 @@ No continuous solar-elevation model and no MODTRAN/Mie/aerosol/airglow (deferred
 optimum presented as behaviour, not a result. No invented values. Existing comparison outputs unchanged
 (regression-gated). `docs/architecture/current.md`, `docs/adr/*`, `docs/audits/*`, and the other three
 notebooks untouched; no `src/` extraction. Committed locally on `rnd/scion-daytime-custody`; nothing pushed.
+
+---
+
+## 9. Extension — SCION-SR daytime-custody *bounding model* (AMOS §5)
+
+Added 2026-08-07, in place in the same notebook. Reorients the daytime section (§8) from a detection
+*demonstration* into a **detector-parameterized bounding model** for §5. Branch: `rnd/scion-daytime-custody`.
+Investigation-record tier. All prior sections unchanged; regression intact (full-band SCION-SR SNR 23.2).
+
+### 9.1 Realistic QE(λ) — the key pending input
+The flat-at-peak QE cannot support a band-selection argument, so this section uses **wavelength-resolved
+QE placeholders**: `QE_VISGAAS_PARAMETRIC` (SCION-SR: poor in the visible, rising through the NIR, peak
+~0.85 across ~1.0–1.5 µm, roll-off to 1.7 µm) and `QE_INGAAS_PARAMETRIC` (reference SWIR sensor: negligible
+below ~0.9 µm, peak ~0.85 at ~1.3 µm). No digitized datasheet QE exists in the repo (`qe_curve` null for
+all detectors), so these are **hand-built parametric placeholders**, added via a backward-compatible
+`qe_override` argument on `run_detector`/`signal_electron_rate` (default `None` = prior flat-at-peak
+behaviour). **The measured QE curve is the key pending input** — the band-selection and color results
+depend on the QE shape, so the *direction* is robust but the *quantitative optimum* is pending.
+
+### 9.2 Intelligent NIR–SWIR band (method + direction, not a number)
+Sweeping the lower cutoff with the realistic SCION-SR QE confirms the **robust direction**: reject the
+visible, keep the NIR–SWIR. The model's optimal lower cutoff sits near the visible/NIR boundary (~0.7–0.8
+µm) — the payoff is discarding the low-QE, λ⁻⁴-bright **visible**. It is **bluer** than Waldmann's
+operational **≥1.1 µm** longpass because this section's placeholder atmosphere (pure λ⁻⁴, no water/thermal
+structure — deferred per hard stops) imposes no penalty on 0.8–1.1 µm. We therefore **adopt ≥1.1 µm
+(Waldmann) as the intelligent band** for the headline claim and treat the exact optimum as
+placeholder-QE/atmosphere dependent — a direction, not a publishable value.
+
+### 9.3 Limiting sensitivity reparameterized by the detector noise floor
+**Limiting sensitivity** = faintest target detectable at `SNR_DETECT` for a reference exposure, reported as
+limiting apparent magnitude and smallest characteristic size at a reference range (inverting the SNR
+relation; the sky/dark/read terms are target-independent). Reference values (new **placeholders**):
+`T_REF_S = 10 ms`, `RANGE_REF_KM = 1000 km`. Scalings shown explicitly: SNR ∝ √t in the sky/dark-limited
+regime, flux ∝ 1/range² (so limiting size ∝ range).
+
+- **Primary figure — vs read noise** (sky-suppressed, t = 10 ms → read-limited): SCION-SR (30 e⁻) and the
+  reference sensor (35 e⁻) are **near-parity** — read noise is not the differentiator here.
+- **Companion — vs dark current** (sky-suppressed, t = 1 s → dark-limited): SCION-SR's far lower dark
+  current, a consequence of **deep thermoelectric cooling (−70/−75 °C)**, reaches substantially fainter
+  targets. SCION-SR's read/dark specs are datasheet **upper bounds**, so the advantage is conservative.
+- **Causal chain:** the SCION-SR − reference limiting-magnitude gap is ~0 when sky-limited and **widens as
+  the sky is suppressed** — +0.12 mag read-limited (t = 10 ms) vs **+0.62 mag dark-limited (t = 1 s)**. This
+  is the paper's sky-limited → detector-limited transition, and it identifies **dark current (deep
+  cooling)** as SCION-SR's decisive advantage in the sky-suppressed daytime regime.
+
+### 9.4 NIR–SWIR color index (secondary)
+An illustrative NIR–SWIR color (magnitude difference between ~1.0–1.2 µm and ~1.4–1.7 µm sub-bands, both
+inside the VISGaAs good-QE region; the visible is excluded because VISGaAs QE is poor there) separates two
+toy material slopes. Supports material discrimination, not the §5 custody claim; also placeholder-QE
+dependent.
+
+### 9.5 Anonymization and the §10 common-band correction
+All competitor references are anonymized **at the display layer only** (config keys left intact): a
+`DISPLAY_NAME` map yields **"SCION-SR"** and **"reference SWIR sensor"**, applied to every paper-facing
+print, the §10 table, the §11 print, and figure titles; no competitor brand name appears in any rendered
+output (verified by scan). The toy model is dropped from the §10 claim-facing table. The §10/§11
+interpretation is **corrected**: the earlier daytime SNR ordering was credited to the detector, but it is a
+**band-coverage effect** (0.6–1.7 vs 0.4–1.7 µm default bands); a detector-only comparison requires a
+**common band**, which this bounding model uses.
+
+### 9.6 Graphics and boundaries
+Rich **inline** plots only (light readability rcParams, colorblind-safe palette) — **no** file export,
+figures directory, manifest, AMOS sizing, or `.gitignore` change this task (the prior §8/Change-4 export
+apparatus is left untouched but not extended). No continuous solar-elevation or MODTRAN/Mie/airglow model
+(deferred). New placeholders introduced: the two parametric QE curves, `T_REF_S = 10 ms`,
+`RANGE_REF_KM = 1000 km`, the color sub-band edges and toy material reflectance slopes. Committed on
+`rnd/scion-daytime-custody`; nothing pushed.
