@@ -248,3 +248,113 @@ apparatus is left untouched but not extended). No continuous solar-elevation or 
 (deferred). New placeholders introduced: the two parametric QE curves, `T_REF_S = 10 ms`,
 `RANGE_REF_KM = 1000 km`, the color sub-band edges and toy material reflectance slopes. Committed on
 `rnd/scion-daytime-custody`; nothing pushed.
+
+---
+
+## 10. Extension — Full-well/saturation axis and iso-curve utility plots (AMOS §6)
+
+Added 2026-08-07, in place in the same notebook. Promotes the bounding model (§9) to the paper's
+**daytime-custody utility study (§6)**: adds **full-well saturation** as a limiting factor and recasts every
+claim plot as an **iso-curve family over the detector parameter space** with **no single named competitor**.
+Branch: `rnd/scion-daytime-custody`. Investigation-record tier. All prior sections unchanged; regression
+intact (full-band SCION-SR SNR 23.2, reference sensor 28.2 — cells 0–50 verified byte-identical in both
+source *and* rendered output).
+
+### 10.1 The saturation mechanism
+Per-pixel accumulation over the integration is now modelled explicitly: `well_fill_rate` = **sky + dark +
+source signal spread over `N_PIX_PSF`**, with `accumulated_e`, `is_saturated`, `t_saturate`, and
+`limiting_mag_capped` layered *additively* on the §9.3 solver (`limiting_mag`/`limiting_size_m` reused
+unchanged; `run_detector`'s vestigial signal-only `saturated` flag left untouched because the benchmark
+section is regression-gated). The largest non-saturating exposure is
+**t_sat = f_usable · W_full / fill_rate**, and limiting sensitivity is evaluated at
+**t = min(t_requested, t_sat)** — never at an arbitrary fixed time.
+
+Two **idealizations, flagged in-notebook, not given invented numbers**: `WELL_USABLE_FRACTION = 1.0` treats
+the entire well as usable (no anti-blooming headroom, no linearity derating; a real ROIC would use ~70–90 %),
+and the signal term assumes the PSF spreads charge **evenly** over `N_PIX_PSF`, so a real peaked PSF fills
+its central pixel faster and the caps below are optimistic on the signal term.
+
+### 10.2 Result — the well → integration-cap → limiting-sensitivity chain
+At the operational band ≥1.1 µm on the reference daytime sky (`REF_SKY_DAYTIME = 20`), the per-pixel
+background fill rate is **1.628 × 10⁶ e⁻ px⁻¹ s⁻¹** (sky 1.628 × 10⁶; dark 15 — five orders of magnitude
+smaller). The bright baseline 1U target itself would add 4.74 × 10⁵ e⁻ px⁻¹ s⁻¹; a *limiting* target adds
+essentially nothing, so the background rate is the one that sets the cap.
+
+| full well (e⁻/px) | t_sat, background (s) | t_sat w/ 1U target (s) | limiting mag @ t_sat | limiting size @ 1000 km (m) |
+|---|---|---|---|---|
+| 1 × 10⁴ | 0.00614 | 0.00476 | 11.06 | 0.057 |
+| 1 × 10⁵ | 0.0614 | 0.0476 | 12.36 | 0.031 |
+| **1 × 10⁶ (SCION-SR)** | **0.614** | **0.476** | **13.62** | **0.018** |
+| 1 × 10⁷ | 6.14 | 4.76 | 14.87 | 0.010 |
+
+The cap is reached **in the sky-shot-dominated regime**, verified numerically at t_sat and printed in the
+notebook: sky shot **99.686 %** of the variance, source shot 0.223 %, read 0.090 %, dark 0.001 % — so
+**read + dark together are 0.09 %, i.e. negligible.** That is what licenses the analytic scaling: with
+N₀² ∝ t and S_base ∝ t, limiting magnitude = const + **1.25·log₁₀ t**, and t_sat ∝ W_full, hence
+
+> **≈ +1.25 mag of daytime limiting sensitivity per decade of well depth** (measured +1.27 mag/decade across
+> the swept family; limiting size shrinks ×0.56 per decade). Over the 3-decade family the achievable
+> limiting magnitude on the reference daytime sky moves **11.06 → 14.87**.
+
+This is the mechanism by which a large well converts into deeper daytime reach, and it makes **full well —
+not the noise floor — the binding constraint in bright daytime sky.** SCION-SR's 1 M e⁻ well yields a
+**0.614 s** non-saturating exposure and limiting mag **13.62** at the reference sky. Absolute magnitudes
+inherit the placeholder sky levels; **the scaling is the result, not the absolute numbers.**
+
+### 10.3 Shift to iso-curve families (competitor space, not a single reference point)
+The §9 two-point figures are **gone**. `REFSENSOR`, `QE_INGAAS_PARAMETRIC`/`QE_INGAAS_ANCHORS`, the InGaAs
+curve on the QE plot, the two-detector print, and the SCION-SR − reference **gap** metric (intrinsically
+two-system, unsalvageable) were all removed from the section. Each claim plot is now a family spanning a
+representative range of SWIR-detector metrics, with **only SCION-SR's operating point marked** — the family
+*is* the competitor space, so no one system is plotted, labelled, or tabulated. Verified by scan: **zero**
+occurrences of `REFSENSOR` / `QE_INGAAS` / "InGaAs" / "reference SWIR" in the section's sources or outputs,
+and zero brand names in any rendered output notebook-wide (config keys in cells 4/6/24/27 remain, per the
+display-layer-only anonymization policy). The frozen §§10–11 cells keep their anonymized reference-sensor
+comparison because they are regression-gated.
+
+- **Fig A (headline)** — limiting sensitivity vs *requested* integration time, one iso-curve per full well
+  (10⁴–10⁷ e⁻), at the reference daytime sky. Each well follows the common √t improvement until **its own
+  saturation knee**, then plateaus: asking for more exposure buys nothing once the well is full. Knees
+  marked; SCION-SR's 1 M e⁻ curve highlighted and its knee annotated. **This is the daytime-custody figure.**
+- **Fig B (supporting, low-sky/faint only)** — limiting sensitivity vs dark current, one iso-curve per read
+  noise (5–100 e⁻), sky **fully suppressed**, t = 1 s. Labelled in its title, lead-in, and printed output as
+  the **low-sky / faint-target floor — explicitly NOT a bright-daytime claim**; the printed regime check
+  confirms the well is nowhere near limiting there (smallest cap 200 s vs t = 1 s).
+- **Fig C (supporting)** — limiting sensitivity vs sky level (200 → 0), one iso-curve per dark current
+  (1–5000 e⁻ px⁻¹ s⁻¹), each point evaluated at `min(1 s requested, t_sat)` so the saturation cap is carried
+  through. The curves **collapse** at bright sky (spread **0.00 mag** at sky = 200 — sky-limited, detector
+  irrelevant) and **fan out** as the sky is suppressed (**1.00 mag** at sky = 0 — detector-limited). Same
+  sky-limited → detector-limited causal chain as §9.3, now in absolute sensitivity for one system.
+- **Fig D (method/direction only)** — band-selection sweep in limiting sensitivity vs lower cutoff, one
+  iso-curve per sky level, with QE(λ) and normalized sky spectral density overlaid. The
+  **atmosphere-limited caveat of §9.2 is retained verbatim in substance**: the model optimum (0.70–0.78 µm
+  across the sky family) is bluer than the operational ≥1.1 µm because the placeholder atmosphere has no
+  water/thermal structure, so **no passband optimum is reported as a result** — ≥1.1 µm (Waldmann) remains
+  the adopted band. The fixed 10 ms exposure is confirmed non-saturating everywhere in that sweep (smallest
+  cap 0.0441 s).
+
+### 10.4 Swept ranges and SCION-SR's operating point
+A printed table replaces the former two-detector comparison: read noise **5–100** (SCION-SR **30**, upper
+bound), dark current **1–5000** (SCION-SR **15** e⁻ px⁻¹ s⁻¹, upper bound, deep TEC), full well
+**10⁴–10⁷** (SCION-SR **10⁶**, 100 % usable per the idealization), QE(λ) not swept (VISGaAs parametric
+placeholder, peak 0.85), pixel pitch fixed at 10 µm, sky **0–200** (reference 20, placeholder levels with no
+solar-elevation mapping), requested integration **1 ms–10 s** (cap 0.614 s at the reference sky), band lower
+cutoff **0.40–1.41 µm** (adopted 1.10). **No competitor row.** New placeholders this task:
+`T_MAX_REQUEST_S = 1 s`, `T_LONG_S = 1 s`, the four swept families, and `WELL_USABLE_FRACTION = 1.0`.
+
+### 10.5 Graphics, one correction, and boundaries
+Rich **inline** plots only — no file export, figures directory, manifest, AMOS sizing, or `.gitignore` change
+(the §8 export apparatus remains untouched and unextended). Ordered families use a perceptual (viridis) ramp
+so the parameter ordering reads, with SCION-SR marked in an accent colour; the legend frame is re-enabled in
+the section's rcParams because the publication block's `legend.frameon: False` let iso-curves show through
+legend text.
+
+**One correction carried over from §9:** those figures called `ax.invert_yaxis()` while labelling the axis
+"fainter ↑", which put fainter magnitudes at the *bottom* — the axis direction contradicted its own label.
+The rewritten figures drop the inversion and label the axis "fainter, better ↑", so fainter is genuinely
+upward. No other §9 result is affected (the inversion was cosmetic).
+
+Boundaries honored: no continuous solar-elevation model, no MODTRAN/Mie/aerosol/airglow (all still
+deferred); no invented QE — the flagged parametric placeholder stands until the measured curve arrives; no
+brand/product names and now **no single competitor point at all**; prior sections unchanged and
+regression-gated; no `src/` extraction or refactor. Committed on `rnd/scion-daytime-custody`; nothing pushed.
