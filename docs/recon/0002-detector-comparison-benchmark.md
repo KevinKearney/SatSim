@@ -358,3 +358,111 @@ Boundaries honored: no continuous solar-elevation model, no MODTRAN/Mie/aerosol/
 deferred); no invented QE — the flagged parametric placeholder stands until the measured curve arrives; no
 brand/product names and now **no single competitor point at all**; prior sections unchanged and
 regression-gated; no `src/` extraction or refactor. Committed on `rnd/scion-daytime-custody`; nothing pushed.
+
+---
+
+## 11. Update — measured VISGaAs QE(λ) and dark current propagated into §6
+
+Added 2026-08-20 on `rnd/scion-daytime-custody`. The vendor's measured characterization at **−70 °C** replaced
+the parametric-QE placeholder and the datasheet dark-current bound in the §6 daytime-custody utility study.
+Nothing else changed: the detector-comparison section (cells 0–50), `qe_of`, `qe_peak`, and `qe_curve` (still
+`null`) are untouched, and no atmosphere physics was added.
+
+### 11.1 Measured values, and where they live
+`configs/detector_configs.json` → `scion_visgaas`:
+
+- `dark_current.value`: **15 → 11.2** e⁻ px⁻¹ s⁻¹, with `note: "measured, -70 C, Teledyne 2026"`. Unit and
+  cooling fields unchanged.
+- **New field `qe_curve_measured`** — `temperature_C: -70`, a `source` string, and 31 (`wavelength_nm`, `qe`)
+  pairs spanning **300–1800 nm** at 50 nm spacing. `qe_curve` was deliberately left `null` and `qe_peak` at
+  `0.85` so `qe_of` and the regression-gated comparison section see no change whatsoever.
+
+Measured QE(λ), abridged: 0.26 @ 300 nm → 0.52 @ 450 → **0.65 @ 500** → 0.795 @ 600 → 0.835 @ 700 → 0.855 @
+1000 → 0.86 @ 1100 → **peak 0.870 @ 1250** → 0.85 @ 1400 → 0.775 @ 1550 → **0.40 @ 1600 → 0.03 @ 1650 →
+0.005 @ 1700** → 0 beyond. The `source` string is read into the notebook but **never printed** (no vendor
+names in rendered output, per the display-layer anonymization policy).
+
+### 11.2 The §6 QE swap
+`QE_VISGAAS_ANCHORS` / `_qe_from_anchors` / the `QE_VISGAAS_PARAMETRIC` placeholder are **gone**. `QE_VISGAAS`
+is now the measured curve read from `qe_curve_measured`, linearly interpolated onto `GRID_UM` and zeroed
+outside the measured range — a guard that never binds here, since `GRID_UM` spans 0.40–1.70 µm, entirely
+inside the measured 0.30–1.80 µm span. It is the QE used by **every** §6 model call: band selection (Fig D),
+the limiting-sensitivity solver, and the saturation/fill-rate layer. The §6.2 markdown now states the QE as
+measured, and its "named parametric placeholder / pending the measured curve" warning box is removed. The
+dark-current provenance labels in §6.1, Fig B, Fig C, and the §6.6 sweep table changed from *upper bound* to
+**measured at −70 °C**; read noise (30 e⁻) remains an upper bound.
+
+**Two shape differences from the retired placeholder drive every number below.** (1) In the **visible** the
+measured QE is *high* (0.65–0.84 over 0.5–0.7 µm) where the placeholder assumed 0.04–0.08 — so the visible is
+now rejected on **sky-brightness** grounds alone, not on a QE deficit. (2) At the **long end** the measured
+cutoff is far sharper: 0.40 @ 1.60 µm and 0.005 @ 1.70 µm versus the placeholder's 0.65 and 0.45. The
+operational ≥1.1 µm band therefore *loses* throughput at 1.6–1.7 µm, which lowers both the in-band sky rate
+and the in-band signal.
+
+### 11.3 Refreshed §6 numbers (measured QE, dark 11.2)
+
+Per-pixel background fill rate at ≥1.1 µm on the reference daytime sky (`REF_SKY_DAYTIME = 20`):
+**1.503 × 10⁶ e⁻ px⁻¹ s⁻¹** (sky 1.503 × 10⁶; dark 11.2 — five orders of magnitude smaller), down from
+1.628 × 10⁶ because of the sharper 1.6 µm cutoff.
+
+| full well (e⁻/px) | t_sat, background (s) | t_sat w/ 1U target (s) | limiting mag @ t_sat | limiting size @ 1000 km (m) | prior (placeholder QE) |
+|---|---|---|---|---|---|
+| 1 × 10⁴ | 0.006653 | 0.005184 | 11.03 | 0.058 | 11.06 / 0.057 |
+| 1 × 10⁵ | 0.06653 | 0.05184 | 12.33 | 0.032 | 12.36 / 0.031 |
+| **1 × 10⁶ (SCION-SR)** | **0.6653** | **0.5184** | **13.59** | **0.018** | 13.62 / 0.018 |
+| 1 × 10⁷ | 6.653 | 5.184 | 14.84 | 0.010 | 14.87 / 0.010 |
+
+- **Fig A saturation knees** — as tabulated above; SCION-SR's 1 M e⁻ well gives a **0.665 s** non-saturating
+  exposure (was 0.614 s; the cap lengthened because the fill rate dropped) at limiting mag **13.59**.
+- **Smallest detectable size at 1000 km**, at SCION-SR's saturation-capped exposure: **0.0178 m** (≈1.8 cm).
+- **1U at 1000 km margin** (0.10 m, at the same 0.665 s capped exposure): apparent mag **9.84** vs limiting
+  mag 13.59 → **+3.75 mag of margin**, i.e. the limiting size is **5.6× smaller** than a 1U, or **SNR ≈ 153
+  against SNR_DETECT = 5**. At the short 10 ms reference exposure instead of the cap, the same target gives
+  SNR ≈ 18.3 (margin +13.3).
+- **Well-depth scaling unchanged and confirmed QE-independent:** the cap is still reached in the
+  sky-shot-dominated regime (sky shot **99.686 %** of the variance; read + dark together **0.0905 %**, vs
+  0.0906 % before), so limiting magnitude is still `const + 1.25·log₁₀ t` with `t_sat ∝ W_full` →
+  **+1.25 mag per decade of well** (measured **+1.27 mag/decade** across the 3-decade family, identical to
+  the prior run; limiting size ×0.56 per decade). The measured QE shifts the intercept, not the slope.
+- **Fig B (low-sky / faint-target floor, sky suppressed, t = 1 s):** limiting mag **17.80** (was 17.91).
+  Slightly *worse* despite the lower dark current — with the sky suppressed the reduced 1.6–1.7 µm
+  throughput costs more signal than the 15 → 11.2 e⁻ px⁻¹ s⁻¹ dark reduction saves in noise. Regime check
+  unchanged: smallest cap in that panel 200 s ≫ 1 s, so the well is not limiting there.
+- **Fig C:** spread across the dark-current family still **0.00 mag at sky = 200** (sky-limited, curves
+  collapse) → **1.00 mag at sky = 0** (detector-limited, curves fan out). At the reference sky the exposure is
+  saturation-capped at 0.665 s (1 s requested), limiting mag 13.59.
+- **§6.7 NIR–SWIR color:** panel-like −0.034 mag, body-like −0.997 mag (measured QE, placeholder
+  reflectances — still illustrative only).
+
+### 11.4 Fig D — band optimum with the measured QE (still direction-only)
+The model optimum moved **bluer**, to **0.63–0.74 µm** across the sky family (was 0.70–0.78 µm):
+
+| sky (W m⁻² sr⁻¹ µm⁻¹) | model optimum cutoff | limiting mag there | limiting mag at the adopted ≥1.1 µm |
+|---|---|---|---|
+| 2 | 0.63 µm | 12.68 | 12.28 |
+| 20 | 0.73 µm | 11.52 | 11.27 |
+| 100 | 0.74 µm | 10.66 | 10.43 |
+
+It moved bluer for the expected reason: the measured QE is *good* in the visible, so the model sees even less
+reason to discard 0.6–1.1 µm. **This is not a publishable result and is not presented as final.** The
+atmosphere is still the **λ⁻⁴ Rayleigh placeholder — no water absorption, no aerosol, no airglow** (deferred,
+per hard stops), and it is exactly that omitted physics which motivates the operational longpass. **≥1.1 µm
+(Waldmann) remains the adopted operational reference** for Figs A–C and for §6.6; Fig D is labelled
+direction-only in its title, its lead-in, its printed output, and its finding block. The fixed 10 ms Fig D
+exposure is still non-saturating everywhere in that sweep (smallest cap 0.008498 s, was 0.04411 s).
+
+### 11.5 Regression and verification
+`jupyter nbconvert --to notebook --execute --inplace` top-to-bottom on `Python (satsim-env)`: **0 errors**.
+Cells 0–50 **source byte-identical**. **SCION-SR full-band SNR at the reference daytime sky = 23.2,
+unchanged**, as are every other SNR in the comparison and §5 tables. The *only* rendered-output change in the
+comparison section is the `dark_e` column, **0.27 → 0.24 e⁻** in cells 24 and 32 — the direct arithmetic
+consequence of the mandated 15 → 11.2 config change, and invisible in the SNR because dark is sky-masked
+there (0.24 e⁻ against 392.5 e⁻ of sky). Figs 1 and 4 in the §5 export block re-rendered with a few bytes'
+difference for the same reason. Figs A–D regenerated inline with the measured QE; no file export, no figures
+directory, no AMOS sizing in §6.
+
+Boundaries honored: no atmosphere physics added (water/aerosol/airglow all still deferred); the remaining §6
+placeholders — blackbody solar proxy, λ⁻⁴ sky, assumed throughput, `WELL_USABLE_FRACTION = 1.0`, placeholder
+sky levels and reflectances — are unchanged and still flagged in-notebook; no vendor or product names in any
+rendered output; no `src/` extraction; ADRs, audits, architecture notes, and the other notebooks untouched.
+Committed on `rnd/scion-daytime-custody`; nothing pushed.
