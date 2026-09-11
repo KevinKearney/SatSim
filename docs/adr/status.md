@@ -1,3 +1,7 @@
+> **Superseded 2026-08-04.** This was a session-dated status report. Its content has been folded into `docs/architecture/current.md` (Architecture Rev 1), §§1-4 and §6, which is now the current status reference. Left in place as a historical record; no further entries will be appended here. Original content follows unchanged.
+
+---
+
 # R&D Status Report
 
 **Session date:** 2026-08-03

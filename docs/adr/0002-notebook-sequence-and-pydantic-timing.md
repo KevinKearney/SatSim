@@ -1,3 +1,7 @@
+> **Superseded 2026-08-04.** This document was filed as an ADR but was always a roadmap/sequencing plan, not a point-in-time architectural decision with alternatives considered. Its content has been folded into `docs/architecture/current.md` (Architecture Rev 1), which is now the current reference. Left in place for history; the ADR number `0002` is retired and will not be reused. Original content follows unchanged.
+
+---
+
 # ADR-0002: Notebook sequence and pydantic timing for RSO_Sim
 
 **Status:** Proposed
